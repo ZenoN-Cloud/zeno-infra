@@ -1,16 +1,14 @@
-# Zeno Auth
+# Zeno Infra
 
-Core authentication and identity service for the **ZenoN-Cloud** platform.
+Infrastructure-as-code for the **ZenoN-Cloud** platform.
 
-This service is responsible for:
-- User accounts and organizations
-- Roles and permissions
-- Authentication and token issuing (access / refresh)
-- Identity boundary for all other ZenoN-Cloud services
+This repository contains:
+- Terraform / OpenTofu configuration for GCP projects (dev / prod)
+- Cloud Run services, Cloud SQL, GCS, Secret Manager, KMS and networking
+- Shared CI/CD pipelines for ZenoN-Cloud services
 
-## Related repositories
+## Provides infrastructure for
 
-- **Infra:** [Zeno Infra](https://github.com/ZenoN-Cloud/zeno-infra)
-- **Downstream services:**
-    - [Zeno Docs](https://github.com/ZenoN-Cloud/zeno-docs)
-    - [Zeno ID Docs](https://github.com/ZenoN-Cloud/zeno-id-docs)
+- [Zeno Auth](https://github.com/ZenoN-Cloud/zeno-auth)
+- [Zeno Docs](https://github.com/ZenoN-Cloud/zeno-docs)
+- [Zeno ID Docs](https://github.com/ZenoN-Cloud/zeno-id-docs)
