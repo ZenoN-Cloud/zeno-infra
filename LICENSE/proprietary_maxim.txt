@@ -1,0 +1,30 @@
+Maxim Viazov Proprietary Software License v1
+============================================
+
+Copyright (c) 2025, Maxim Viazov
+
+All rights reserved.
+
+1. You are NOT permitted to:
+   - copy the Software;
+   - modify the Software;
+   - merge, publish, distribute, sublicense, or sell copies of the Software;
+   - create derivative works based on the Software;
+   - fork the Software or reuse its components in any form.
+
+2. You MAY:
+   - view the Software for the purpose of evaluation, debugging, or personal learning.
+   - use the Software only as part of the original binary/application provided by the author.
+
+3. The Software (including its source code, build scripts, documentation,
+   and any related materials) remains the exclusive property of the author.
+   No rights are granted except those explicitly stated above.
+
+4. The Software is provided “AS IS”, without warranty of any kind, express or
+   implied. The author is not liable for any damages arising from the use or
+   inability to use the Software.
+
+5. Using this Software does not grant any rights to the author's trademarks,
+   brand name, or any commercial usage.
+
+END OF TERMS
