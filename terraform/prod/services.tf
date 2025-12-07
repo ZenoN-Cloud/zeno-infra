@@ -1,0 +1,253 @@
+# ------------------------------------------------------------------------------
+# Cloud Run Services
+# ------------------------------------------------------------------------------
+
+# --- zeno-auth ---
+resource "google_cloud_run_v2_service" "zeno_auth" {
+  name     = "zeno-auth"
+  location = var.region
+  project  = var.project_id
+
+  template {
+    service_account = "zeno-auth-sa@${var.project_id}.iam.gserviceaccount.com"
+
+    scaling {
+      min_instance_count = 0 # Экономия: масштабирование до нуля
+      max_instance_count = 2 # Ограничение для dev
+    }
+
+    containers {
+      image = "gcr.io/${var.project_id}/zeno-auth:latest"
+      ports { container_port = 8080 }
+
+      env {
+        name  = "DB_USER"
+        value = google_sql_user.main_user.name
+      }
+      env {
+        name  = "DB_NAME"
+        value = google_sql_database.zeno_auth_db.name
+      }
+      env {
+        name  = "DB_HOST"
+        value = "/cloudsql/${google_sql_database_instance.main.connection_name}"
+      }
+      env {
+        name = "DB_PASSWORD"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.db_password.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "JWT_PRIVATE_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.zeno_auth_jwt_private_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "JWT_PUBLIC_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.zeno_auth_jwt_public_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "SENDGRID_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.zeno_auth_sendgrid_api_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+    }
+
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance { instances = [google_sql_database_instance.main.connection_name] }
+    }
+    vpc_access {
+      connector = google_vpc_access_connector.main.id
+      egress    = "ALL_TRAFFIC"
+    }
+  }
+}
+
+# --- zeno-billing ---
+resource "google_cloud_run_v2_service" "zeno_billing" {
+  name     = "zeno-billing"
+  location = var.region
+  project  = var.project_id
+
+  template {
+    service_account = "zeno-billing-sa@${var.project_id}.iam.gserviceaccount.com"
+
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 2
+    }
+
+    containers {
+      image = "gcr.io/${var.project_id}/zeno-billing:latest"
+      ports { container_port = 8080 }
+      env {
+        name  = "DB_USER"
+        value = google_sql_user.main_user.name
+      }
+      env {
+        name  = "DB_NAME"
+        value = google_sql_database.zeno_billing_db.name
+      }
+      env {
+        name  = "DB_HOST"
+        value = "/cloudsql/${google_sql_database_instance.main.connection_name}"
+      }
+      env {
+        name = "DB_PASSWORD"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.db_password.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "STRIPE_SECRET_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.stripe_secret_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name = "STRIPE_WEBHOOK_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.stripe_webhook_secret.secret_id
+            version = "latest"
+          }
+        }
+      }
+    }
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance { instances = [google_sql_database_instance.main.connection_name] }
+    }
+    vpc_access {
+      connector = google_vpc_access_connector.main.id
+      egress    = "ALL_TRAFFIC"
+    }
+  }
+}
+
+# --- zeno-roles ---
+resource "google_cloud_run_v2_service" "zeno_roles" {
+  name     = "zeno-roles"
+  location = var.region
+  project  = var.project_id
+
+  template {
+    service_account = "zeno-roles-sa@${var.project_id}.iam.gserviceaccount.com"
+
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 2
+    }
+
+    containers {
+      image = "gcr.io/${var.project_id}/zeno-roles:latest"
+      ports { container_port = 8080 }
+      env {
+        name  = "REDIS_URL"
+        value = "redis://${google_redis_instance.main.host}:${google_redis_instance.main.port}"
+      }
+    }
+    vpc_access {
+      connector = google_vpc_access_connector.main.id
+      egress    = "ALL_TRAFFIC"
+    }
+  }
+}
+
+# --- zeno-usage ---
+resource "google_cloud_run_v2_service" "zeno_usage" {
+  name     = "zeno-usage"
+  location = var.region
+  project  = var.project_id
+
+  template {
+    service_account = "zeno-usage-sa@${var.project_id}.iam.gserviceaccount.com"
+
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 2
+    }
+
+    containers {
+      image = "gcr.io/${var.project_id}/zeno-usage:latest"
+      ports { container_port = 8080 }
+      env {
+        name  = "PUBSUB_PROJECT_ID"
+        value = var.project_id
+      }
+      env {
+        name  = "PUBSUB_SUBSCRIPTION"
+        value = google_pubsub_subscription.zeno_usage_sub.name
+      }
+    }
+    vpc_access {
+      connector = google_vpc_access_connector.main.id
+      egress    = "ALL_TRAFFIC"
+    }
+  }
+}
+
+# ------------------------------------------------------------------------------
+# Зависимости сервисов (VPC Connector, Pub/Sub, IAM)
+# ------------------------------------------------------------------------------
+resource "google_vpc_access_connector" "main" {
+  name          = "cloud-run-connector"
+  region        = var.region
+  project       = var.project_id
+  ip_cidr_range = "10.8.0.0/28"
+  network       = google_compute_network.vpc.name
+}
+
+resource "google_pubsub_topic" "zeno_usage_topic" {
+  name    = "zeno-usage-events"
+  project = var.project_id
+}
+
+resource "google_pubsub_subscription" "zeno_usage_sub" {
+  name    = "zeno-usage-sub"
+  topic   = google_pubsub_topic.zeno_usage_topic.name
+  project = var.project_id
+
+  push_config {
+    push_endpoint = "" # Используем pull-подписку
+  }
+  ack_deadline_seconds = 20
+}
+
+resource "google_pubsub_subscription_iam_member" "zeno_usage_subscriber" {
+  project      = var.project_id
+  subscription = google_pubsub_subscription.zeno_usage_sub.name
+  role         = "roles/pubsub.subscriber"
+  member       = "serviceAccount:zeno-usage-sa@${var.project_id}.iam.gserviceaccount.com"
+}
+
+resource "google_pubsub_topic_iam_member" "zeno_billing_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.zeno_usage_topic.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:zeno-billing-sa@${var.project_id}.iam.gserviceaccount.com"
+}
