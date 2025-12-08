@@ -71,7 +71,7 @@ resource "google_cloud_run_v2_service" "zeno_auth" {
       }
       env {
         name  = "CORS_ALLOWED_ORIGINS"
-        value = "https://zeno-console-umu7aajgeq-ey.a.run.app"
+        value = "https://zeno-console-899549698924.europe-west3.run.app"
       }
 
       volume_mounts {
@@ -162,7 +162,7 @@ resource "google_cloud_run_v2_service" "zeno_billing" {
       }
       env {
         name  = "APP_ALLOWED_ORIGINS"
-        value = "https://zeno-console-umu7aajgeq-ey.a.run.app"
+        value = "https://zeno-console-899549698924.europe-west3.run.app"
       }
 
       volume_mounts {
@@ -226,7 +226,7 @@ resource "google_cloud_run_v2_service" "zeno_roles" {
       }
       env {
         name  = "ZENO_ROLES_CORS_ALLOWED_ORIGINS"
-        value = "https://zeno-console-umu7aajgeq-ey.a.run.app"
+        value = "https://zeno-console-899549698924.europe-west3.run.app"
       }
 
       volume_mounts {
