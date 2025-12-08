@@ -69,6 +69,10 @@ resource "google_cloud_run_v2_service" "zeno_auth" {
           }
         }
       }
+      env {
+        name  = "CORS_ALLOWED_ORIGINS"
+        value = "https://zeno-console-umu7aajgeq-ey.a.run.app"
+      }
 
       volume_mounts {
         name       = "cloudsql"
@@ -156,6 +160,10 @@ resource "google_cloud_run_v2_service" "zeno_billing" {
         name  = "APP_AUTH_SERVICE_URL"
         value = google_cloud_run_v2_service.zeno_auth.uri
       }
+      env {
+        name  = "APP_ALLOWED_ORIGINS"
+        value = "https://zeno-console-umu7aajgeq-ey.a.run.app"
+      }
 
       volume_mounts {
         name       = "cloudsql"
@@ -215,6 +223,10 @@ resource "google_cloud_run_v2_service" "zeno_roles" {
       env {
         name  = "ZENO_ROLES_HTTP_PORT"
         value = "8080"
+      }
+      env {
+        name  = "ZENO_ROLES_CORS_ALLOWED_ORIGINS"
+        value = "https://zeno-console-umu7aajgeq-ey.a.run.app"
       }
 
       volume_mounts {
