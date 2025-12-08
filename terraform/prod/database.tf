@@ -26,7 +26,7 @@ resource "google_sql_database_instance" "main" {
     }
 
     # Важно для Cloud Run
-    connector_enforcement = "NOT_REQUIRED"
+    connector_enforcement = "REQUIRED"
   }
 
   # Отключаем защиту от удаления для dev окружения
@@ -47,7 +47,19 @@ resource "google_sql_database" "zeno_auth_db" {
   project  = var.project_id
 }
 
-# ... добавь сюда другие базы данных по аналогии
+# База данных для сервиса zeno-roles
+resource "google_sql_database" "zeno_roles_db" {
+  name     = "zeno_roles"
+  instance = google_sql_database_instance.main.name
+  project  = var.project_id
+}
+
+# База данных для сервиса zeno-usage
+resource "google_sql_database" "zeno_usage_db" {
+  name     = "zeno_usage"
+  instance = google_sql_database_instance.main.name
+  project  = var.project_id
+}
 
 # Пользователь для доступа к базам данных
 resource "google_sql_user" "main_user" {
@@ -78,7 +90,10 @@ resource "google_compute_subnetwork" "main_subnet" {
 resource "google_service_networking_connection" "private_vpc_connection" {
   network                 = google_compute_network.vpc.id
   service                 = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.private_ip_address.name]
+  reserved_peering_ranges = [
+    google_compute_global_address.private_ip_address.name,
+    google_compute_global_address.redis_peering_range.name
+  ]
 }
 
 resource "google_compute_global_address" "private_ip_address" {

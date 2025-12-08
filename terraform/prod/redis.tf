@@ -23,10 +23,10 @@ resource "google_redis_instance" "main" {
 
 # Выделяем диапазон IP для пиринга с Redis
 resource "google_compute_global_address" "redis_peering_range" {
-  name          = "redis-peering-range"
+  name          = "redis-ip-range-for-vpc-peering"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   ip_version    = "IPV4"
-  prefix_length = 24
+  prefix_length = 16
   network       = google_compute_network.vpc.id
 }

@@ -9,7 +9,8 @@ resource "google_cloud_run_v2_service" "zeno_auth" {
   project  = var.project_id
 
   template {
-    service_account = "zeno-auth-sa@${var.project_id}.iam.gserviceaccount.com"
+    service_account = google_service_account.zeno_auth.email
+    timeout         = "300s"
 
     scaling {
       min_instance_count = 0 # Экономия: масштабирование до нуля
@@ -17,7 +18,7 @@ resource "google_cloud_run_v2_service" "zeno_auth" {
     }
 
     containers {
-      image = "gcr.io/${var.project_id}/zeno-auth:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/zeno-services/zeno-auth:latest"
       ports { container_port = 8080 }
 
       env {
@@ -68,6 +69,11 @@ resource "google_cloud_run_v2_service" "zeno_auth" {
           }
         }
       }
+
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
     }
 
     volumes {
@@ -88,7 +94,8 @@ resource "google_cloud_run_v2_service" "zeno_billing" {
   project  = var.project_id
 
   template {
-    service_account = "zeno-billing-sa@${var.project_id}.iam.gserviceaccount.com"
+    service_account = google_service_account.zeno_billing.email
+    timeout         = "300s"
 
     scaling {
       min_instance_count = 0
@@ -96,7 +103,7 @@ resource "google_cloud_run_v2_service" "zeno_billing" {
     }
 
     containers {
-      image = "gcr.io/${var.project_id}/zeno-billing:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/zeno-services/zeno-billing:latest"
       ports { container_port = 8080 }
       env {
         name  = "DB_USER"
@@ -137,6 +144,23 @@ resource "google_cloud_run_v2_service" "zeno_billing" {
           }
         }
       }
+      env {
+        name  = "PUBSUB_PROJECT_ID"
+        value = var.project_id
+      }
+      env {
+        name  = "PUBSUB_TOPIC_BILLING_EVENTS"
+        value = google_pubsub_topic.zeno_usage_topic.name
+      }
+      env {
+        name  = "APP_AUTH_SERVICE_URL"
+        value = google_cloud_run_v2_service.zeno_auth.uri
+      }
+
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
     }
     volumes {
       name = "cloudsql"
@@ -156,7 +180,8 @@ resource "google_cloud_run_v2_service" "zeno_roles" {
   project  = var.project_id
 
   template {
-    service_account = "zeno-roles-sa@${var.project_id}.iam.gserviceaccount.com"
+    service_account = google_service_account.zeno_roles.email
+    timeout         = "300s"
 
     scaling {
       min_instance_count = 0
@@ -164,12 +189,42 @@ resource "google_cloud_run_v2_service" "zeno_roles" {
     }
 
     containers {
-      image = "gcr.io/${var.project_id}/zeno-roles:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/zeno-services/zeno-roles:latest"
       ports { container_port = 8080 }
       env {
-        name  = "REDIS_URL"
+        name  = "ZENO_ROLES_DATABASE_URL"
+        value = "postgres://${google_sql_user.main_user.name}@/${google_sql_database.zeno_roles_db.name}?host=/cloudsql/${google_sql_database_instance.main.connection_name}"
+      }
+      env {
+        name = "ZENO_ROLES_DATABASE_PASSWORD"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.db_password.secret_id
+            version = "latest"
+          }
+        }
+      }
+      env {
+        name  = "ZENO_ROLES_REDIS_URL"
         value = "redis://${google_redis_instance.main.host}:${google_redis_instance.main.port}"
       }
+      env {
+        name  = "ZENO_ROLES_GRPC_PORT"
+        value = "8083"
+      }
+      env {
+        name  = "ZENO_ROLES_HTTP_PORT"
+        value = "8080"
+      }
+
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
+    }
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance { instances = [google_sql_database_instance.main.connection_name] }
     }
     vpc_access {
       connector = google_vpc_access_connector.main.id
@@ -185,7 +240,8 @@ resource "google_cloud_run_v2_service" "zeno_usage" {
   project  = var.project_id
 
   template {
-    service_account = "zeno-usage-sa@${var.project_id}.iam.gserviceaccount.com"
+    service_account = google_service_account.zeno_usage.email
+    timeout         = "300s"
 
     scaling {
       min_instance_count = 0
@@ -193,8 +249,29 @@ resource "google_cloud_run_v2_service" "zeno_usage" {
     }
 
     containers {
-      image = "gcr.io/${var.project_id}/zeno-usage:latest"
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/zeno-services/zeno-usage:latest"
       ports { container_port = 8080 }
+      env {
+        name  = "DB_USER"
+        value = google_sql_user.main_user.name
+      }
+      env {
+        name  = "DB_NAME"
+        value = google_sql_database.zeno_usage_db.name
+      }
+      env {
+        name  = "DB_HOST"
+        value = "/cloudsql/${google_sql_database_instance.main.connection_name}"
+      }
+      env {
+        name = "DB_PASSWORD"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.db_password.secret_id
+            version = "latest"
+          }
+        }
+      }
       env {
         name  = "PUBSUB_PROJECT_ID"
         value = var.project_id
@@ -203,10 +280,49 @@ resource "google_cloud_run_v2_service" "zeno_usage" {
         name  = "PUBSUB_SUBSCRIPTION"
         value = google_pubsub_subscription.zeno_usage_sub.name
       }
+      env {
+        name  = "GRPC_PORT"
+        value = "8085"
+      }
+      env {
+        name  = "HTTP_PORT"
+        value = "8080"
+      }
+
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
+    }
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance { instances = [google_sql_database_instance.main.connection_name] }
     }
     vpc_access {
       connector = google_vpc_access_connector.main.id
       egress    = "ALL_TRAFFIC"
+    }
+  }
+}
+
+# --- zeno-documents ---
+resource "google_cloud_run_v2_service" "zeno_documents" {
+  name     = "zeno-documents"
+  location = var.region
+  project  = var.project_id
+
+  template {
+    service_account = google_service_account.zeno_documents.email
+    timeout         = "300s"
+
+    scaling {
+      min_instance_count = 0
+      max_instance_count = 2
+    }
+
+    containers {
+      image = "${var.region}-docker.pkg.dev/${var.project_id}/zeno-services/zeno-documents:latest"
+      ports { container_port = 8089 }
     }
   }
 }
@@ -250,4 +366,20 @@ resource "google_pubsub_topic_iam_member" "zeno_billing_publisher" {
   topic   = google_pubsub_topic.zeno_usage_topic.name
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:zeno-billing-sa@${var.project_id}.iam.gserviceaccount.com"
+}
+
+resource "google_pubsub_topic_iam_member" "zeno_billing_viewer" {
+  project = var.project_id
+  topic   = google_pubsub_topic.zeno_usage_topic.name
+  role    = "roles/pubsub.viewer"
+  member  = "serviceAccount:zeno-billing-sa@${var.project_id}.iam.gserviceaccount.com"
+}
+
+# Allow zeno-billing to invoke zeno-auth
+resource "google_cloud_run_service_iam_member" "zeno_billing_invoke_auth" {
+  project  = var.project_id
+  location = var.region
+  service  = google_cloud_run_v2_service.zeno_auth.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.zeno_billing.email}"
 }
