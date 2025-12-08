@@ -395,3 +395,30 @@ resource "google_cloud_run_service_iam_member" "zeno_billing_invoke_auth" {
   role     = "roles/run.invoker"
   member   = "serviceAccount:${google_service_account.zeno_billing.email}"
 }
+
+# Allow public access to zeno-auth (for registration/login)
+resource "google_cloud_run_service_iam_member" "zeno_auth_public" {
+  project  = var.project_id
+  location = var.region
+  service  = google_cloud_run_v2_service.zeno_auth.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+# Allow public access to zeno-billing (for webhooks)
+resource "google_cloud_run_service_iam_member" "zeno_billing_public" {
+  project  = var.project_id
+  location = var.region
+  service  = google_cloud_run_v2_service.zeno_billing.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+# Allow public access to zeno-roles
+resource "google_cloud_run_service_iam_member" "zeno_roles_public" {
+  project  = var.project_id
+  location = var.region
+  service  = google_cloud_run_v2_service.zeno_roles.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
