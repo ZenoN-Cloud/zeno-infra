@@ -126,3 +126,42 @@ resource "google_project_iam_member" "usage_cloudsql_client" {
   role    = "roles/cloudsql.client"
   member  = "serviceAccount:${google_service_account.zeno_usage.email}"
 }
+
+# ------------------------------------------------------------------------------
+# Public Access для Cloud Run Services
+# ------------------------------------------------------------------------------
+
+resource "google_cloud_run_v2_service_iam_member" "zeno_auth_public" {
+  name     = google_cloud_run_v2_service.zeno_auth.name
+  location = google_cloud_run_v2_service.zeno_auth.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "zeno_billing_public" {
+  name     = google_cloud_run_v2_service.zeno_billing.name
+  location = google_cloud_run_v2_service.zeno_billing.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "zeno_roles_public" {
+  name     = google_cloud_run_v2_service.zeno_roles.name
+  location = google_cloud_run_v2_service.zeno_roles.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "zeno_usage_public" {
+  name     = google_cloud_run_v2_service.zeno_usage.name
+  location = google_cloud_run_v2_service.zeno_usage.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "zeno_documents_public" {
+  name     = google_cloud_run_v2_service.zeno_documents.name
+  location = google_cloud_run_v2_service.zeno_documents.location
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}

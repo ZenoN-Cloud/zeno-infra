@@ -13,8 +13,8 @@ resource "google_cloud_run_v2_service" "zeno_auth" {
     timeout         = "300s"
 
     scaling {
-      min_instance_count = 0 # Экономия: масштабирование до нуля
-      max_instance_count = 2 # Ограничение для dev
+      min_instance_count = 0
+      max_instance_count = 2
     }
 
     containers {
@@ -73,6 +73,10 @@ resource "google_cloud_run_v2_service" "zeno_auth" {
         name  = "CORS_ALLOWED_ORIGINS"
         value = "https://zeno-console-899549698924.europe-west3.run.app"
       }
+      env {
+        name  = "ENV"
+        value = "prod"
+      }
 
       volume_mounts {
         name       = "cloudsql"
@@ -83,10 +87,6 @@ resource "google_cloud_run_v2_service" "zeno_auth" {
     volumes {
       name = "cloudsql"
       cloud_sql_instance { instances = [google_sql_database_instance.main.connection_name] }
-    }
-    vpc_access {
-      connector = google_vpc_access_connector.main.id
-      egress    = "ALL_TRAFFIC"
     }
   }
 }
@@ -174,10 +174,6 @@ resource "google_cloud_run_v2_service" "zeno_billing" {
       name = "cloudsql"
       cloud_sql_instance { instances = [google_sql_database_instance.main.connection_name] }
     }
-    vpc_access {
-      connector = google_vpc_access_connector.main.id
-      egress    = "ALL_TRAFFIC"
-    }
   }
 }
 
@@ -212,10 +208,7 @@ resource "google_cloud_run_v2_service" "zeno_roles" {
           }
         }
       }
-      env {
-        name  = "ZENO_ROLES_REDIS_URL"
-        value = "redis://${google_redis_instance.main.host}:${google_redis_instance.main.port}"
-      }
+
       env {
         name  = "ZENO_ROLES_GRPC_PORT"
         value = "8083"
@@ -237,10 +230,6 @@ resource "google_cloud_run_v2_service" "zeno_roles" {
     volumes {
       name = "cloudsql"
       cloud_sql_instance { instances = [google_sql_database_instance.main.connection_name] }
-    }
-    vpc_access {
-      connector = google_vpc_access_connector.main.id
-      egress    = "ALL_TRAFFIC"
     }
   }
 }
@@ -309,10 +298,6 @@ resource "google_cloud_run_v2_service" "zeno_usage" {
     volumes {
       name = "cloudsql"
       cloud_sql_instance { instances = [google_sql_database_instance.main.connection_name] }
-    }
-    vpc_access {
-      connector = google_vpc_access_connector.main.id
-      egress    = "ALL_TRAFFIC"
     }
   }
 }
