@@ -1,106 +1,40 @@
 # ------------------------------------------------------------------------------
-# Cloud SQL for PostgreSQL
+# Cloud SQL for PostgreSQL (импорт существующего инстанса)
 # ------------------------------------------------------------------------------
 
-resource "google_sql_database_instance" "main" {
-  name             = "zeno-db-instance-dev" # Переименовано для ясности
-  database_version = "POSTGRES_14"
-  region           = var.region
-  project          = var.project_id
-
-  depends_on = [google_service_networking_connection.private_vpc_connection]
-
-  settings {
-    tier = "db-g1-small" # Самый дешевый вариант
-
-    # ZONAL - дешевле, чем REGIONAL. Идеально для разработки.
-    availability_type = "ZONAL"
-
-    backup_configuration {
-      enabled = false # Отключаем бэкапы для максимальной экономии в dev
-    }
-
-    ip_configuration {
-      ipv4_enabled    = false # Отключаем публичный IP для безопасности
-      private_network = google_compute_network.vpc.id
-    }
-
-    # Важно для Cloud Run
-    connector_enforcement = "REQUIRED"
-  }
-
-  # Отключаем защиту от удаления для dev окружения
-  deletion_protection = false
+# Импортируем существующий инстанс
+# terraform import google_sql_database_instance.main zeno-cy-dev-001/zeno-sql-dev
+data "google_sql_database_instance" "main" {
+  name    = "zeno-sql-dev"
+  project = var.project_id
 }
 
-# База данных для сервиса zeno-billing
-resource "google_sql_database" "zeno_billing_db" {
-  name     = "zeno_billing"
-  instance = google_sql_database_instance.main.name
-  project  = var.project_id
-}
-
-# База данных для сервиса zeno-auth
-resource "google_sql_database" "zeno_auth_db" {
+# Импортируем существующие базы данных
+data "google_sql_database" "zeno_auth_db" {
   name     = "zeno_auth"
-  instance = google_sql_database_instance.main.name
+  instance = data.google_sql_database_instance.main.name
   project  = var.project_id
 }
 
-# База данных для сервиса zeno-roles
-resource "google_sql_database" "zeno_roles_db" {
+data "google_sql_database" "zeno_billing_db" {
+  name     = "zeno_billing"
+  instance = data.google_sql_database_instance.main.name
+  project  = var.project_id
+}
+
+data "google_sql_database" "zeno_roles_db" {
   name     = "zeno_roles"
-  instance = google_sql_database_instance.main.name
+  instance = data.google_sql_database_instance.main.name
   project  = var.project_id
 }
 
-# База данных для сервиса zeno-usage
-resource "google_sql_database" "zeno_usage_db" {
+data "google_sql_database" "zeno_usage_db" {
   name     = "zeno_usage"
-  instance = google_sql_database_instance.main.name
+  instance = data.google_sql_database_instance.main.name
   project  = var.project_id
 }
 
-# Пользователь для доступа к базам данных
-resource "google_sql_user" "main_user" {
-  name     = "zeno_user"
-  instance = google_sql_database_instance.main.name
-  password = var.db_password
-  project  = var.project_id
-}
-
-# ------------------------------------------------------------------------------
-# Сеть для базы данных
-# ------------------------------------------------------------------------------
-
-resource "google_compute_network" "vpc" {
-  name                    = "zeno-vpc"
-  auto_create_subnetworks = false
-  project                 = var.project_id
-}
-
-resource "google_compute_subnetwork" "main_subnet" {
-  name          = "zeno-subnet"
-  ip_cidr_range = "10.0.0.0/24"
-  network       = google_compute_network.vpc.id
-  region        = var.region
-  project       = var.project_id
-}
-
-resource "google_service_networking_connection" "private_vpc_connection" {
-  network                 = google_compute_network.vpc.id
-  service                 = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [
-    google_compute_global_address.private_ip_address.name,
-    google_compute_global_address.redis_peering_range.name
-  ]
-}
-
-resource "google_compute_global_address" "private_ip_address" {
-  name          = "private-ip-for-sql"
-  purpose       = "VPC_PEERING"
-  address_type  = "INTERNAL"
-  ip_version    = "IPV4"
-  prefix_length = 16
-  network       = google_compute_network.vpc.id
+# Используем локальную переменную для имени пользователя
+locals {
+  db_user = "zeno_user"
 }
